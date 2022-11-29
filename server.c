@@ -131,20 +131,21 @@ int auth(int connectfd, char *account[], int status[], int size, int *i){
     write(connectfd, message, strlen(message));
     char buffer[BUFFER_SIZE];
     char username[BUFFER_SIZE], password[BUFFER_SIZE];
-    read(connectfd, buffer, 64);
-    strcpy(username, buffer);
+    int username_size = read(connectfd, username, 64);
+    username[username_size-1] = '\0';
     write(connectfd, "\nPassword: ", strlen("\nPassword: "));
-    read(connectfd, buffer, 64);
-    strcpy(password, buffer);
+    int pass_size = read(connectfd, password, 64);
+    password[pass_size-1] = '\0';
+    printf("%s : %s - \n", username, password);
     for(*i = 0; *i < size; *i=*i+2){
-        if(strncmp(username, account[*i], strlen(account[*i])) == 0){
-            if(strncmp(password, account[*i+1], (strlen(password)-1)) == 0 && status[*i] == 1){
+        if(strcmp(username, account[*i]) == 0){
+            if(strcmp(password, account[*i+1]) == 0 && status[*i] == 1){
                 return -1;
             }
-            else if(strncmp(password, account[*i+1], strlen(account[*i+1])) == 0 && status[*i] == 2){
+            else if(strcmp(password, account[*i+1]) == 0 && status[*i] == 2){
                 return -2;
             }
-            else if(strncmp(password, account[*i+1], strlen(account[*i+1])) == 0 && status[*i] == 0){
+            else if(strcmp(password, account[*i+1]) == 0 && status[*i] == 0){
                 return -3;
             }
             else{
@@ -157,12 +158,13 @@ int auth(int connectfd, char *account[], int status[], int size, int *i){
 
 
 int main(int argc, char *argv[]){
-    if(argc < 3){
-        fprintf(stderr, "Usage: %s host port\n", argv[0]);
+    if(argc < 2){
+        fprintf(stderr, "Usage: %s port\n", argv[0]);
         exit(1);
     }
-    char *host = argv[1];
-    int port = atoi(argv[2]);
+    int u = 1;
+    int port = atoi(argv[1]);
+    char host[] = "127.0.0.1";
     char *account[100];
     int i = 0, status[100];
     int block_status[100] = {0};
@@ -197,13 +199,13 @@ int main(int argc, char *argv[]){
             char buffer[BUFFER_SIZE];
             int buff_size = read(connfd, buffer, BUFFER_SIZE);
             if(strncmp(buffer, "bye", strlen("bye")) == 0){
-                char buf[9] = "Goodbye ";
+                char buf[9] = "Goodbye \n";
                 strcat(buf, account[i]);
                 write(connfd, buf, strlen(buf));
                 close(connfd);
             }
             else{
-                memset(account[i+1], '\0', sizeof(account[i]));
+                memset(account[i+1], '\0', sizeof(account[i+1]));
                 strncpy(account[i+1], buffer, buff_size-1);              
                 if(passHandler(connfd, account[i+1])){
                     writeFile(account, status, size);
@@ -211,15 +213,15 @@ int main(int argc, char *argv[]){
             }
         }
         else if(authid == -2){
-            char notReady[] = "Account not ready!";
+            char notReady[] = "Account not ready!\n";
             write(connfd, notReady, strlen(notReady));
         }
         else if(authid == -3){
-            char blocked[] = "Account is blocked!";
+            char blocked[] = "Account is blocked!\n";
             write(connfd, blocked, strlen(blocked));
         }
         else {
-            char invalid[] = "not OK";
+            char invalid[] = "not OK\n";
             write(connfd, invalid, strlen(invalid));
             if(authid < size){
                 read_blocklist(block_status, size);

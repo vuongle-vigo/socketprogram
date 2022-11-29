@@ -9,6 +9,7 @@
 # include <errno.h>
 # include <sys/socket.h>
 # include <sys/types.h>
+# include <sys/signal.h>
 
 struct sockaddr_in set_addr(char *host, int port){
    struct sockaddr_in sa;
@@ -73,9 +74,12 @@ int main(int argc, char **argv){
             perror("fork");
             exit(0);}
         else if(pid == 0){
+            
+            memset(buffer, '\0', sizeof(buffer));
             read(sockfd, buffer, sizeof(buffer));
             printf("%s", buffer);
-            memset(buffer, 0, sizeof(buffer));
+            ab:
+            memset(buffer, '\0', sizeof(buffer));
             fgets(buffer, sizeof(buffer), stdin);
             if(strcmp(buffer, "\n")==0){
                 kill(pid, 1);
@@ -87,23 +91,12 @@ int main(int argc, char **argv){
                 perror("write");
                 exit(-1);
             }
-            read(sockfd, buffer, sizeof(buffer));
-            printf("%s", buffer);
-            memset(buffer, 0, sizeof(buffer));
-            fgets(buffer, sizeof(buffer), stdin);
-            if(strcmp(buffer, "\n")==0){
-                kill(pid, 1);
+            memset(buffer, '\0', sizeof(buffer));
+            if(read(sockfd, buffer, sizeof(buffer))>0){
+                printf("%s", buffer);
+                goto ab;
             }
-            while (buffer[strlen(buffer) - 1] == '\n'){
-                buffer[strlen(buffer) - 1] = 0;
-            }
-            if(write(sockfd, buffer, strlen(buffer)+1)<0){
-                perror("write");
-                exit(-1);
-            }
-            read(sockfd, buffer, sizeof(buffer));
-            printf("%s", buffer);
-            exit(0);
+            
         }
         else if(pid > 0 ){
             wait(0);
